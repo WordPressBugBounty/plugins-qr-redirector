@@ -1,14 +1,14 @@
 <?php
 /**
  * @package QR Redirector
- * @version 2.0.2
+ * @version 2.0.3
  */
 /*
 Plugin Name: QR Redirector
 Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
 Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
 Author: Nikki Blight <nblight@nlb-creations.com>
-Version: 2.0.2
+Version: 2.0.3
 Author URI: http://www.nlb-creations.com
 */
 
@@ -258,7 +258,7 @@ function qr_redirect_custom_box() {
 	echo '</select>';
 	
 	//set a notification for QR Codes saved using the old library that they need to update their size settings
-	if($size <= 30) {
+	if($size && $size <= 30) {
 		echo '<span style="color: #d02e34; background-color: #fbbbc0; border: 1px solid #d02e34; padding: 10px; margin-left: 25px;">* This QR code uses a size from a previous version of this plugin.  Please select a new size.  300x300 has been selected by default.</span>';
 	}
 	
