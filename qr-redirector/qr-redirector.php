@@ -1,14 +1,14 @@
 <?php
 /**
  * @package QR Redirector
- * @version 2.0.3
+ * @version 2.0.4
  */
 /*
 Plugin Name: QR Redirector
 Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
 Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
 Author: Nikki Blight <nblight@nlb-creations.com>
-Version: 2.0.3
+Version: 2.0.4
 Author URI: http://www.nlb-creations.com
 */
 
@@ -28,6 +28,17 @@ use Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelHigh;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\RoundBlockSizeMode\RoundBlockSizeModeMargin;
 use Endroid\QrCode\Writer\PngWriter;
+
+/**
+ * Flush permalinks so we don't get a bunch of 404 errors after activation for the custom post type
+ */
+function qr_plugin_activate() {
+    //register post types
+    qr_create_post_types();
+    // Flush rewrite rules
+    flush_rewrite_rules();
+}
+register_activation_hook( __FILE__, 'qr_plugin_activate' );
 
 /**
  * Load styles and scripts for the admin dashboard
@@ -150,6 +161,13 @@ function qr_add_count($post_id) {
  * @param int $post_id
  */
 function qr_clear_count($post_id) {
+    
+    // Verify the nonce
+    if ( ! isset( $_POST['qr_nonce'] ) || ! wp_verify_nonce( $_POST['qr_nonce'], 'qr-security' ) ) {
+        wp_send_json_error( 'Security check failed' );
+        wp_die();
+    }
+    
 	if(!$post_id) {
 		$post_id = $_POST['post_id'];
 	}
@@ -157,6 +175,36 @@ function qr_clear_count($post_id) {
 	$count = 0;
 	update_post_meta($post_id,'qr_redirect_count',$count);
 }
+
+/**
+ * Generate the javascript to make an AJAX call to the qr_clear_count() function on the qrcode edit page
+ */
+function qr_clear_count_javascript() {
+    global $post_type;
+    
+    if( 'qrcode' == $post_type ) {
+        global $post;
+        
+        ?>
+		<script type="text/javascript" >
+		jQuery("#clear_count_button").click(function($) {
+			var data = {
+				'action': 'qr_clear_count',
+				'post_id': <?php echo $post->ID; ?>,
+				'qr_nonce' : '<?php echo wp_create_nonce('qr-security'); ?>'
+			};
+	
+			if (confirm("Are you sure you want to clear the redirect count?") == true) {
+				jQuery.post(ajaxurl, data, function(response) {
+					jQuery("#qr_count_value").text("0");
+				});
+			}
+		});
+		</script> <?php
+	}
+}
+add_action( 'admin_footer', 'qr_clear_count_javascript' ); //insert the javascript
+add_action( 'wp_ajax_qr_clear_count', 'qr_clear_count' ); //connect the AJAX call to the PHP function
 
 /**
  * Add custom meta boxes to the edit screen for a qrcode post type 
@@ -353,35 +401,6 @@ function qr_image_custom_box() {
 	}
 	echo '</div>';
 }
-
-/**
- * Generate the javascript to make an AJAX call to the qr_clear_count() function on the qrcode edit page
- */
-function qr_clear_count_javascript() { 
-	global $post_type;
-	
-	if( 'qrcode' == $post_type ) {
-		global $post;
-		
-		?>
-		<script type="text/javascript" >
-		jQuery("#clear_count_button").click(function($) {
-			var data = {
-				'action': 'qr_clear_count',
-				'post_id': <?php echo $post->ID; ?>
-			};
-	
-			if (confirm("Are you sure you want to clear the redirect count?") == true) {
-				jQuery.post(ajaxurl, data, function(response) {
-					jQuery("#qr_count_value").text("0");
-				});
-			}
-		});
-		</script> <?php
-	}
-}
-add_action( 'admin_footer', 'qr_clear_count_javascript' ); //insert the javascript
-add_action( 'wp_ajax_qr_clear_count', 'qr_clear_count' ); //connect the AJAX call to the PHP function
 
 /**
  * When the post is saved, save our custom post_meta fields and generate the QR Code image  
