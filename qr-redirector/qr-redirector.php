@@ -1,21 +1,21 @@
 <?php
 /**
  * @package QR Redirector
- * @version 2.0.4
+ * @version 2.0.5
  */
 /*
-Plugin Name: QR Redirector
-Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
-Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
-Author: Nikki Blight <nblight@nlb-creations.com>
-Version: 2.0.4
-Author URI: http://www.nlb-creations.com
-*/
+ Plugin Name: QR Redirector
+ Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
+ Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
+ Author: Nikki Blight <nblight@nlb-creations.com>
+ Version: 2.0.5
+ Author URI: http://www.nlb-creations.com
+ */
 
-/** 
+/**
  * Load the neccessary vendor files for QR Generation.
- * 
- * See documentation at https://github.com/endroid/qr-code 
+ *
+ * See documentation at https://github.com/endroid/qr-code
  */
 include('vendor/autoload.php');
 
@@ -44,14 +44,14 @@ register_activation_hook( __FILE__, 'qr_plugin_activate' );
  * Load styles and scripts for the admin dashboard
  */
 function load_qr_admin_style() {
-	global $post_type;
-	if( 'qrcode' == $post_type ) {
-		wp_register_style( 'qr_admin_css', plugins_url('/assets/admin.css', __FILE__), false, '1.0.0' );
-		wp_enqueue_style( 'qr_admin_css' );
-		wp_enqueue_style( 'wp-color-picker' );
-		
-		wp_enqueue_script('quick-edit-script', plugins_url( '/assets/post-quick-edit-script.js', __FILE__), array('jquery','inline-edit-post' ));
-		wp_enqueue_script( 'qr-color-script', plugins_url( '/assets/color-script.js', __FILE__ ), array( 'wp-color-picker' ), false, true ); 
+    global $post_type;
+    if( 'qrcode' == $post_type ) {
+        wp_register_style( 'qr_admin_css', plugins_url('/assets/admin.css', __FILE__), false, '1.0.0' );
+        wp_enqueue_style( 'qr_admin_css' );
+        wp_enqueue_style( 'wp-color-picker' );
+        
+        wp_enqueue_script('quick-edit-script', plugins_url( '/assets/post-quick-edit-script.js', __FILE__), array('jquery','inline-edit-post' ));
+        wp_enqueue_script( 'qr-color-script', plugins_url( '/assets/color-script.js', __FILE__ ), array( 'wp-color-picker' ), false, true );
     }
 }
 add_action('admin_enqueue_scripts', 'load_qr_admin_style');
@@ -60,28 +60,28 @@ add_action('admin_enqueue_scripts', 'load_qr_admin_style');
  * Create a custom post type to hold QR redirect data
  */
 function qr_create_post_types() {
-	register_post_type( 'qrcode',
-			array(
-					'labels' => array(
-							'name' => __( 'QR Redirects' ),
-							'singular_name' => __( 'QR Redirect' ),
-							'add_new' => __( 'Add QR Redirect'),
-							'add_new_item' => __( 'Add QR Redirect'),
-							'edit_item' => __( 'Edit QR Redirect' ),
-							'new_item' => __( 'New QR Redirect' ),
-							'view_item' => __( 'View QR Redirect' )
-					),
-					'show_ui' => true,
-					'description' => 'Post type for QR Redirects',
-					//'menu_position' => 5,
-					'menu_icon' => WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__)) . 'assets/qr-menu-icon.png',
-					'public' => true,
-					'exclude_from_search' => true,
-					'supports' => array('title'),
-					'rewrite' => array('slug' => 'qr'),
-					'can_export' => true
-			)
-			);
+    register_post_type( 'qrcode',
+        array(
+            'labels' => array(
+                'name' => __( 'QR Redirects' ),
+                'singular_name' => __( 'QR Redirect' ),
+                'add_new' => __( 'Add QR Redirect'),
+                'add_new_item' => __( 'Add QR Redirect'),
+                'edit_item' => __( 'Edit QR Redirect' ),
+                'new_item' => __( 'New QR Redirect' ),
+                'view_item' => __( 'View QR Redirect' )
+            ),
+            'show_ui' => true,
+            'description' => 'Post type for QR Redirects',
+            //'menu_position' => 5,
+            'menu_icon' => WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__)) . 'assets/qr-menu-icon.png',
+            'public' => true,
+            'exclude_from_search' => true,
+            'supports' => array('title'),
+            'rewrite' => array('slug' => 'qr'),
+            'can_export' => true
+        )
+        );
 }
 add_action( 'init', 'qr_create_post_types' );
 
@@ -89,75 +89,75 @@ add_action( 'init', 'qr_create_post_types' );
  * Intercept a QR Code post before it actually renders, and redirect to the specified URL
  */
 function qr_redirect_to_url() {
-	global $post;
-	
-	//for backwards compatibility
-	if(!isset($post->ID)) {
-		//get the post_name so we can look up the post id
-		if(stristr($_SERVER['REQUEST_URI'], "/") && stristr($_SERVER['REQUEST_URI'], "/qr/")) {
-			$uri = explode("/", $_SERVER['REQUEST_URI']);
-			
-			foreach($uri as $i => $u) {
-				if($u == '') {
-					unset($uri[$i]);
-				}
-			}
-			$uri = array_pop($uri);
-		}
-		else {
-			$uri = $_SERVER['REQUEST_URI'];
-		}
-	
-		$post = get_page_by_path($uri,'OBJECT','qrcode');
-	}
-	
-	if(!is_admin() && is_singular( 'qrcode' )) {
-		$url = get_post_meta($post->ID, 'qr_redirect_url', true);
-		$response = get_post_meta($post->ID, 'qr_redirect_response', true);
-		
-		if($url != '') {
-			qr_add_count($post->ID); //increment the redirect count
-			
-			if($response == '') {
-				header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
-				header( 'Location: '.$url, true );
-			}
-			else {
-				header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
-				header( 'Location: '.$url, true, $response );
-			}
-			exit();
-		}
-		else {
-			//if for some reason there's no url, redirect to homepage
-			header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
-			header( 'Location: '.get_bloginfo('url'));
-			exit();
-		}
-	}
+    global $post;
+    
+    //for backwards compatibility
+    if(!isset($post->ID)) {
+        //get the post_name so we can look up the post id
+        if(stristr($_SERVER['REQUEST_URI'], "/") && stristr($_SERVER['REQUEST_URI'], "/qr/")) {
+            $uri = explode("/", $_SERVER['REQUEST_URI']);
+            
+            foreach($uri as $i => $u) {
+                if($u == '') {
+                    unset($uri[$i]);
+                }
+            }
+            $uri = array_pop($uri);
+        }
+        else {
+            $uri = $_SERVER['REQUEST_URI'];
+        }
+        
+        $post = get_page_by_path($uri,'OBJECT','qrcode');
+    }
+    
+    if(!is_admin() && is_singular( 'qrcode' )) {
+        $url = get_post_meta($post->ID, 'qr_redirect_url', true);
+        $response = get_post_meta($post->ID, 'qr_redirect_response', true);
+        
+        if($url != '') {
+            qr_add_count($post->ID); //increment the redirect count
+            
+            if($response == '') {
+                header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
+                header( 'Location: '.$url, true );
+            }
+            else {
+                header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
+                header( 'Location: '.$url, true, $response );
+            }
+            exit();
+        }
+        else {
+            //if for some reason there's no url, redirect to homepage
+            header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
+            header( 'Location: '.get_bloginfo('url'));
+            exit();
+        }
+    }
 }
 add_action( 'wp', 'qr_redirect_to_url' );
 
 
 /**
  * Keep some very basic stats on how mant times a QR Code has been used
- * 
+ *
  * @param int $post_id - the ID of the QR Code post
  */
 //simple function to keep some stats on how many times a QR Code has been used
 function qr_add_count($post_id) {
-	$count = get_post_meta($post_id,'qr_redirect_count',true);
-	if(!$count) { //for new QR codes, set count to 0
-		$count = 0;
-	}
-	
-	$count = $count + 1;
-	update_post_meta($post_id,'qr_redirect_count',$count);
+    $count = get_post_meta($post_id,'qr_redirect_count',true);
+    if(!$count) { //for new QR codes, set count to 0
+        $count = 0;
+    }
+    
+    $count = $count + 1;
+    update_post_meta($post_id,'qr_redirect_count',$count);
 }
 
 /**
  * Reset the count for a given QR Code.  Called via AJAX ( see qr_clear_count_javascript() and qr_image_custom_box() functions).
- * 
+ *
  * @param int $post_id
  */
 function qr_clear_count($post_id) {
@@ -168,12 +168,12 @@ function qr_clear_count($post_id) {
         wp_die();
     }
     
-	if(!$post_id) {
-		$post_id = $_POST['post_id'];
-	}
-	
-	$count = 0;
-	update_post_meta($post_id,'qr_redirect_count',$count);
+    if(!$post_id) {
+        $post_id = $_POST['post_id'];
+    }
+    
+    $count = 0;
+    update_post_meta($post_id,'qr_redirect_count',$count);
 }
 
 /**
@@ -429,13 +429,13 @@ function qr_dynamic_save_postdata( $post_id ) {
 	
 	$permalink = get_permalink($post_id);
 	
-	$errorCorrectionLevel = $_POST['qr_redirect']['ecl'];
-	$matrixPointSize = $_POST['qr_redirect']['size'];
-	$responseCode = $_POST['qr_redirect']['response'];
+	$errorCorrectionLevel = sanitize_text_field($_POST['qr_redirect']['ecl']);
+	$matrixPointSize = sanitize_text_field($_POST['qr_redirect']['size']);
+	$responseCode = sanitize_text_field($_POST['qr_redirect']['response']);
 	$adminNotes = sanitize_text_field($_POST['qr_redirect']['notes']);
-	$fgColor = $_POST['qr_redirect']['qr_fg_color'];
-	$bgColor = $_POST['qr_redirect']['qr_bg_color'];
-	$bgTrans = isset($_POST['qr_redirect']['qr_transparent']) ? $_POST['qr_redirect']['qr_transparent'] : 'off';
+	$fgColor = sanitize_text_field($_POST['qr_redirect']['qr_fg_color']);
+	$bgColor = sanitize_text_field($_POST['qr_redirect']['qr_bg_color']);
+	$bgTrans = isset($_POST['qr_redirect']['qr_transparent']) ? sanitize_text_field($_POST['qr_redirect']['qr_transparent']) : 'off';
 	
 	//the color picker will only save as hex, but we need RGB for the QR function
 	$fgColor_rgb = sscanf($fgColor, "#%02x%02x%02x");

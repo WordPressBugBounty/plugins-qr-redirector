@@ -3,8 +3,8 @@ Contributors: kionae
 Donate Link: http://nlb-creations.com/donate/
 Tags: qr code, redirection
 Requires at least: 3.2.0
-Tested up to: 6.9.1
-Stable tag: 2.0.4
+Tested up to: 7.1.1
+Stable tag: 2.0.5
 
 QR Redirector lets you create a QR code for a URL on your site, and redirect that URL anywhere.  The result is a reusable QR Code.
 
@@ -70,6 +70,10 @@ This sometimes happens when first installing the plugin, and occasionally if you
 4. QR Redirector edit screen
 
 == Changelog ==
+
+= 2.0.5 =
+* Verifying 7.1 compatibility.
+* Fixing security issue - data sanitization
 
 = 2.0.4 =
 * Fixing security issue with clear redirect count AJAX call
