@@ -26,7 +26,6 @@ jQuery(document).ready(function($){
             $qr_redirect_response = $('#qr_redirect_response_' + post_id);
             $qr_redirect_response_value = $qr_redirect_response.text();
             $row.find('#qr_redirect_response').val($qr_redirect_response_value);
-            $row.find('#qr_redirect_response').children('[value="' + $qr_redirect_response + '"]').attr('selected', true);
 
         }
 
@@ -51,8 +50,8 @@ jQuery(function($){
 			qr_redirect_response = bulk_edit_row.find( 'select[name="qr_redirect_response"]' ).val(),
  
 		// now we have to obtain the post IDs selected for bulk edit
-		bulk_edit_row.find( '#bulk-titles' ).children().each( function() {
-			post_ids.push( $( this ).attr( 'id' ).replace( /^(ttle)/i, '' ) );
+		bulk_edit_row.find( '#bulk-titles-list .ntdelbutton' ).each( function() {
+		    post_ids.push( $( this ).attr( 'id' ).replace( /^_/, '' ) );
 		});
 
 		// save the data with AJAX

@@ -1,21 +1,21 @@
 <?php
 /**
  * @package QR Redirector
- * @version 2.0.5
+ * @version 2.0.6
  */
 /*
- Plugin Name: QR Redirector
- Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
- Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
- Author: Nikki Blight <nblight@nlb-creations.com>
- Version: 2.0.5
- Author URI: http://www.nlb-creations.com
- */
+Plugin Name: QR Redirector
+Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
+Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
+Author: Nikki Blight <nblight@nlb-creations.com>
+Version: 2.0.6
+Author URI: http://www.nlb-creations.com
+*/
 
-/**
+/** 
  * Load the neccessary vendor files for QR Generation.
- *
- * See documentation at https://github.com/endroid/qr-code
+ * 
+ * See documentation at https://github.com/endroid/qr-code 
  */
 include('vendor/autoload.php');
 
@@ -44,14 +44,14 @@ register_activation_hook( __FILE__, 'qr_plugin_activate' );
  * Load styles and scripts for the admin dashboard
  */
 function load_qr_admin_style() {
-    global $post_type;
-    if( 'qrcode' == $post_type ) {
-        wp_register_style( 'qr_admin_css', plugins_url('/assets/admin.css', __FILE__), false, '1.0.0' );
-        wp_enqueue_style( 'qr_admin_css' );
-        wp_enqueue_style( 'wp-color-picker' );
-        
-        wp_enqueue_script('quick-edit-script', plugins_url( '/assets/post-quick-edit-script.js', __FILE__), array('jquery','inline-edit-post' ));
-        wp_enqueue_script( 'qr-color-script', plugins_url( '/assets/color-script.js', __FILE__ ), array( 'wp-color-picker' ), false, true );
+	global $post_type;
+	if( 'qrcode' == $post_type ) {
+		wp_register_style( 'qr_admin_css', plugins_url('/assets/admin.css', __FILE__), false, '1.0.0' );
+		wp_enqueue_style( 'qr_admin_css' );
+		wp_enqueue_style( 'wp-color-picker' );
+		
+		wp_enqueue_script('quick-edit-script', plugins_url( '/assets/post-quick-edit-script.js', __FILE__), array('jquery','inline-edit-post' ));
+		wp_enqueue_script( 'qr-color-script', plugins_url( '/assets/color-script.js', __FILE__ ), array( 'wp-color-picker' ), false, true ); 
     }
 }
 add_action('admin_enqueue_scripts', 'load_qr_admin_style');
@@ -60,104 +60,304 @@ add_action('admin_enqueue_scripts', 'load_qr_admin_style');
  * Create a custom post type to hold QR redirect data
  */
 function qr_create_post_types() {
-    register_post_type( 'qrcode',
+	register_post_type( 'qrcode',
+			array(
+					'labels' => array(
+							'name' => __( 'QR Redirects' ),
+							'singular_name' => __( 'QR Redirect' ),
+							'add_new' => __( 'Add QR Redirect'),
+							'add_new_item' => __( 'Add QR Redirect'),
+							'edit_item' => __( 'Edit QR Redirect' ),
+							'new_item' => __( 'New QR Redirect' ),
+							'view_item' => __( 'View QR Redirect' )
+					),
+					'show_ui' => true,
+					'description' => 'Post type for QR Redirects',
+					'menu_icon' => WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__)) . 'assets/qr-menu-icon.png',
+					'public' => true,
+					'exclude_from_search' => true,
+					'supports' => array('title'),
+					'rewrite' => array('slug' => 'qr'),
+					'can_export' => true
+			)
+			);
+}
+add_action( 'init', 'qr_create_post_types' );
+
+/*
+ * Register meta fields
+ */
+function qr_register_metadata() {
+    register_post_meta(
+        'qrcode', //post type
+        'qr_redirect_response', //field name
         array(
-            'labels' => array(
-                'name' => __( 'QR Redirects' ),
-                'singular_name' => __( 'QR Redirect' ),
-                'add_new' => __( 'Add QR Redirect'),
-                'add_new_item' => __( 'Add QR Redirect'),
-                'edit_item' => __( 'Edit QR Redirect' ),
-                'new_item' => __( 'New QR Redirect' ),
-                'view_item' => __( 'View QR Redirect' )
-            ),
-            'show_ui' => true,
-            'description' => 'Post type for QR Redirects',
-            //'menu_position' => 5,
-            'menu_icon' => WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__)) . 'assets/qr-menu-icon.png',
-            'public' => true,
-            'exclude_from_search' => true,
-            'supports' => array('title'),
-            'rewrite' => array('slug' => 'qr'),
-            'can_export' => true
+            'type'              => 'integer',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_redirect_response',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode', //post type
+        'qr_redirect_size', //field name
+        array(
+            'type'              => 'integer',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_redirect_size',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode', //post type
+        'qr_redirect_ecl', //field name
+        array(
+            'type'              => 'string',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_redirect_ecl',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode',
+        'qr_redirect_qr_fg_color',
+        array(
+            'type'              => 'string',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_hex_color',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode',
+        'qr_redirect_qr_bg_color',
+        array(
+            'type'              => 'string',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_hex_color',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode',
+        'qr_redirect_qr_transparent',
+        array(
+            'type'              => 'string',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_checkbox',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode',
+        'qr_redirect_url',
+        array(
+            'type'              => 'string',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_url',
+            'auth_callback'     => 'qr_auth_metadata_fields',
+        )
+        );
+    
+    register_post_meta(
+        'qrcode',
+        'qr_redirect_notes',
+        array(
+            'type'              => 'string',
+            'single'            => true,
+            'sanitize_callback' => 'qr_sanitize_text',
+            'auth_callback'     => 'qr_auth_metadata_fields',
         )
         );
 }
-add_action( 'init', 'qr_create_post_types' );
+add_action( 'init', 'qr_register_metadata' );
+
+//**** START Sanitization Callbacks ****//
+
+/**
+ * Sanitize/validate the redirect response code.
+ *
+ * Only allow the HTTP redirect codes supported by the plugin.
+ */
+function qr_sanitize_redirect_response( $value ) {
+
+    $value = absint( $value );
+    $allowed_codes = array( 301, 302, 307, 308 );
+    
+    if ( ! in_array( $value, $allowed_codes, true ) ) {
+        return 0;
+    }
+    
+    return $value;
+}
+
+/**
+ * Sanitize/validate the QR Code size.
+ *
+ * Only allow the HTTP redirect codes supported by the plugin.
+ */
+function qr_sanitize_redirect_size( $value ) {
+    
+    $value = absint( $value );
+    $allowed_codes = array( 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 );
+    
+    if ( ! in_array( $value, $allowed_codes, true ) ) {
+        return 0;
+    }
+    
+    return $value;
+}
+
+/**
+ * Sanitize/validate the redirect response code.
+ *
+ * Only allow the ECL codes supported by the plugin.
+ */
+function qr_sanitize_redirect_ecl( $value ) {
+        
+    $value = strtoupper( (string) $value );
+    
+    $allowed_codes = array( 'L', 'M', 'H', 'Q' );
+    
+    if ( ! in_array( $value, $allowed_codes, true ) ) {
+        return '';
+    }
+    
+    return $value;
+}
+
+/**
+ * Sanitize/validate the hex color codes.
+ */
+function qr_sanitize_hex_color( $value ) {
+    
+    $value = strtoupper( trim( (string) $value ) );
+    
+    if ( preg_match( '/^#[0-9A-F]{3}([0-9A-F]{3})?$/', $value ) ) {
+        return $value;
+    }
+    
+    return '';
+}
+
+/**
+ * Sanitize/validate checkboxes.
+ */
+function qr_sanitize_checkbox( $value ) {
+    
+    $value = ((string) $value );
+    
+    $allowed_codes = array( 'on', 'off');
+    
+    if ( ! in_array( $value, $allowed_codes, true ) ) {
+        return '';
+    }
+    
+    return $value;
+}
+
+/**
+ * Sanitize/validate url fields.
+ */
+function qr_sanitize_url( $value ) {
+    return sanitize_url( $value );
+}
+
+/**
+ * Sanitize/validate text fields.
+ */
+function qr_sanitize_text( $value ) {
+    return sanitize_text_field( $value );
+}
+
+/**
+ * Control who can edit a custom meta field.
+ */
+function qr_auth_metadata_fields( $allowed, $meta_key, $post_id, $user_id ) {
+
+    return user_can( $user_id, 'edit_post', $post_id );
+}
+
+//**** END Sanitization Callbacks ****//
 
 /**
  * Intercept a QR Code post before it actually renders, and redirect to the specified URL
  */
 function qr_redirect_to_url() {
-    global $post;
-    
-    //for backwards compatibility
-    if(!isset($post->ID)) {
-        //get the post_name so we can look up the post id
-        if(stristr($_SERVER['REQUEST_URI'], "/") && stristr($_SERVER['REQUEST_URI'], "/qr/")) {
-            $uri = explode("/", $_SERVER['REQUEST_URI']);
-            
-            foreach($uri as $i => $u) {
-                if($u == '') {
-                    unset($uri[$i]);
-                }
-            }
-            $uri = array_pop($uri);
-        }
-        else {
-            $uri = $_SERVER['REQUEST_URI'];
-        }
-        
-        $post = get_page_by_path($uri,'OBJECT','qrcode');
-    }
-    
-    if(!is_admin() && is_singular( 'qrcode' )) {
-        $url = get_post_meta($post->ID, 'qr_redirect_url', true);
-        $response = get_post_meta($post->ID, 'qr_redirect_response', true);
-        
-        if($url != '') {
-            qr_add_count($post->ID); //increment the redirect count
-            
-            if($response == '') {
-                header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
-                header( 'Location: '.$url, true );
-            }
-            else {
-                header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
-                header( 'Location: '.$url, true, $response );
-            }
-            exit();
-        }
-        else {
-            //if for some reason there's no url, redirect to homepage
-            header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
-            header( 'Location: '.get_bloginfo('url'));
-            exit();
-        }
-    }
+	global $post;
+	
+	//for backwards compatibility
+	if(!isset($post->ID)) {
+		//get the post_name so we can look up the post id
+		if(stristr($_SERVER['REQUEST_URI'], "/") && stristr($_SERVER['REQUEST_URI'], "/qr/")) {
+			$uri = explode("/", $_SERVER['REQUEST_URI']);
+			
+			foreach($uri as $i => $u) {
+				if($u == '') {
+					unset($uri[$i]);
+				}
+			}
+			$uri = array_pop($uri);
+		}
+		else {
+			$uri = $_SERVER['REQUEST_URI'];
+		}
+	
+		$post = get_page_by_path($uri,'OBJECT','qrcode');
+	}
+	
+	if(!is_admin() && is_singular( 'qrcode' )) {
+		$url = get_post_meta($post->ID, 'qr_redirect_url', true);
+		$response = get_post_meta($post->ID, 'qr_redirect_response', true);
+		
+		if($url != '') {
+			qr_add_count($post->ID); //increment the redirect count
+			
+			if($response == '') {
+				header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
+				header( 'Location: '.$url, true );
+			}
+			else {
+				header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
+				header( 'Location: '.$url, true, $response );
+			}
+			exit();
+		}
+		else {
+			//if for some reason there's no url, redirect to homepage
+			header( 'Cache-Control: no-store, no-cache, must-revalidate' ); //prevent browers from caching the redirect url
+			header( 'Location: '.get_bloginfo('url'));
+			exit();
+		}
+	}
 }
 add_action( 'wp', 'qr_redirect_to_url' );
 
-
 /**
  * Keep some very basic stats on how mant times a QR Code has been used
- *
+ * 
  * @param int $post_id - the ID of the QR Code post
  */
 //simple function to keep some stats on how many times a QR Code has been used
 function qr_add_count($post_id) {
-    $count = get_post_meta($post_id,'qr_redirect_count',true);
-    if(!$count) { //for new QR codes, set count to 0
-        $count = 0;
-    }
-    
-    $count = $count + 1;
-    update_post_meta($post_id,'qr_redirect_count',$count);
+	$count = get_post_meta($post_id,'qr_redirect_count',true);
+	if(!$count) { //for new QR codes, set count to 0
+		$count = 0;
+	}
+	
+	$count = $count + 1;
+	update_post_meta($post_id,'qr_redirect_count',$count);
 }
 
 /**
  * Reset the count for a given QR Code.  Called via AJAX ( see qr_clear_count_javascript() and qr_image_custom_box() functions).
- *
+ * 
  * @param int $post_id
  */
 function qr_clear_count($post_id) {
@@ -168,12 +368,12 @@ function qr_clear_count($post_id) {
         wp_die();
     }
     
-    if(!$post_id) {
-        $post_id = $_POST['post_id'];
-    }
-    
-    $count = 0;
-    update_post_meta($post_id,'qr_redirect_count',$count);
+	if(!$post_id) {
+		$post_id = $_POST['post_id'];
+	}
+	
+	$count = 0;
+	update_post_meta($post_id,'qr_redirect_count',$count);
 }
 
 /**
@@ -258,50 +458,49 @@ function qr_redirect_custom_box() {
     }
     
     //output the form
-	echo '<p> <strong>URL to Redirect to:</strong> <input type="text" name="qr_redirect[url]" value="'.$url.'" style="width: 80%;" /> </p>';
+	echo '<p> <strong>URL to Redirect to:</strong> <input type="text" name="qr_redirect[url]" value="'.esc_attr($url).'" style="width: 80%;" /> </p>';
 	
 	//Error Correction Level Field
+	$ecl_options = array(
+    	'L' => 'recovery of up to 7% data loss',
+    	'M' => 'recovery of up to 15% data loss',
+    	'Q' => 'recovery of up to 25% data loss',
+    	'H' => 'recovery of up to 30% data loss'
+    	);
 	echo '<p>';
 	echo '<div class="tooltip"><strong style="width: 150px; display: inline-block;">Error Correction Level:</strong> ';
 	echo '<span class="tooltiptext">The Error Correction Level is the amount of "backup" data in the QR code to account for damage it may receive in its intended environment.  Higher levels result in a more complex QR image.</span>';
 	echo '</div>';
 	echo '<select name="qr_redirect[ecl]">';
-	echo '<option value="L"';
-	if($ecl == "L") { echo ' selected="selected"'; }
-	echo '>L - recovery of up to 7% data loss</option>';
-	echo '<option value="M"';
-	if($ecl == "M") {
-		echo ' selected="selected"';
+	foreach ( $ecl_options as $value => $description ) {
+		echo '<option value="'.esc_attr( $value ).'"'.selected( $ecl, $value ).'>';
+	    echo esc_html( $value . ' - ' . $description );
+		echo '</option>';
 	}
-	echo '>M - recovery of up to 15% data loss</option>';
-	echo '<option value="Q"';
-	if($ecl == "Q") {
-		echo ' selected="selected"';
-	}
-	echo'>Q - recovery of up to 25% data loss</option>';
-	echo '<option value="H"';
-	if($ecl == "H") {
-		echo ' selected="selected"';
-	}
-	echo '>H - recovery of up to 30% data loss</option>';
 	echo '</select></p>';
 	
 	//Size Field
+	$size_options = array(
+    	'100' => '100x100 pixels',
+    	'200' => '200x200 pixels',
+    	'300' => '300x300 pixels',
+    	'400' => '400x400 pixels',
+    	'500' => '500x500 pixels',
+    	'600' => '600x600 pixels',
+    	'700' => '700x700 pixels',
+    	'800' => '800x800 pixels',
+    	'900' => '900x900 pixels',
+    	'1000' => '1000x1000 pixels'
+	);
 	echo '<p>';
 	echo '<div class="tooltip"><strong style="width: 150px; display: inline-block;">Size:</strong> ';
 	echo '<span class="tooltiptext">The size in pixels of the generated QR code.</span>';
 	echo '</div>';
 	echo '<select name="qr_redirect[size]">';
-	for($i=1; $i<=10; $i++) {
-		echo '<option value="'.$i.'00"';
-		if((!$size || $size <= 30) && $i==3) {
-			echo ' selected="selected"';
-		}
-		elseif($size == $i.'00') {
-			echo ' selected="selected"';
-		}
-		echo '>'.$i.'00 x '.$i.'00 pixels';
-		echo '</option>';
+	foreach ( $size_options as $value => $description ) {
+	    echo '<option value="'.esc_attr( $value ).'"'.selected( $size, $value ).'>';
+	    echo esc_html( $description );
+	    echo '</option>';
 	}
 	echo '</select>';
 	
@@ -313,38 +512,31 @@ function qr_redirect_custom_box() {
 	echo '</p>';
 	
 	//Reponse Code Field
+	$response_options = array(
+    	'301' => 'Moved Permanently',
+    	'302' => 'Found',
+    	'307' => 'Temporary Redirect',
+    	'308' => 'Permanent Redirect'
+	);
 	echo '<p>';
 	echo '<div class="tooltip"><strong style="width: 150px; display: inline-block;">HTTP Response Code:</strong> ';
 	echo '<span class="tooltiptext">The HTTP Response Code defaults to 302 - Found.  You may set it to any of the specified options, if needed.</span>';
 	echo '</div>';
 	echo '<select name="qr_redirect[response]">';
-	echo '<option value="301"';
-	if($response == "301") { echo ' selected="selected"'; }
-	echo '>301 - Moved Permanently</option>';
-	echo '<option value="302"';
-	if($response == "302" || $response == '') {
-		echo ' selected="selected"';
+	foreach ( $response_options as $value => $description ) {
+	    echo '<option value="'.esc_attr( $value ).'"'.selected( $ecl, $value ).'>';
+	    echo esc_html( $value . ' - ' . $description );
+	    echo '</option>';
 	}
-	echo '>302 - Found</option>';
-	echo '<option value="307"';
-	if($response == "307") {
-		echo ' selected="selected"';
-	}
-	echo'>307 - Temporary Redirect';
-	echo '<option value="308"';
-	if($response == "308") {
-		echo ' selected="selected"';
-	}
-	echo '>308 - Permanent Redirect</option>';
 	echo '</select></p>';
 	
 	//Foreground and Background Color Picker Fields
 	echo '<p><strong>Foreground Color:</strong> ';
-	echo '<input class="color-field" name="qr_redirect[qr_fg_color]" value="'.$fgcolor.'" />';
+	echo '<input class="color-field" name="qr_redirect[qr_fg_color]" value="'.esc_attr($fgcolor).'" />';
 	echo '</p>';
 	
 	echo '<p><strong>Background Color:</strong> ';
-	echo '<input class="color-field" name="qr_redirect[qr_bg_color]" value="'.$bgcolor.'" />';
+	echo '<input class="color-field" name="qr_redirect[qr_bg_color]" value="'.esc_attr($bgcolor).'" />';
 	
 	echo '<input type="checkbox" name="qr_redirect[qr_transparent]"';
 	if($bg_trans == 'on') {
@@ -358,7 +550,7 @@ function qr_redirect_custom_box() {
 	echo '<div class="tooltip"><strong>Admin Notes:</strong> ';
 	echo '<span class="tooltiptext">Anything entered here is for your reference only and will not appear outside of the WordPress backend.</span>';
 	echo '</div>';
-	echo '<br /> <textarea style="width: 75%; height: 150px;" name="qr_redirect[notes]">'.$notes.'</textarea></p>';
+	echo '<br /> <textarea style="width: 75%; height: 150px;" name="qr_redirect[notes]">'.esc_html($notes).'</textarea></p>';
 	
 	echo '</div>';
 }
@@ -379,11 +571,11 @@ function qr_image_custom_box() {
 		echo '<br /><br /><code>[qr-code id="'.$post->ID.'"]</code></p>';
 		echo '<hr />';
 		echo '<em>Click to download image at actual size</em><br />';
-		echo '<a href="'.$img.'" target="_blank" download><img src="'.$img.'" style="max-width: 250px; max-height: 250px;" /></a>';
+		echo '<a href="'.esc_url($img).'" target="_blank" download><img src="'.esc_url($img).'" style="max-width: 250px; max-height: 250px;" /></a>';
 		echo '<hr />';
 		echo '<strong>'.get_permalink($post->ID).'</strong>';
 		echo '<br />will redirect to:<br />';
-		echo '<strong>'.get_post_meta($post->ID,'qr_redirect_url',true).'</strong>';
+		echo '<strong>'.esc_url(get_post_meta($post->ID,'qr_redirect_url',true)).'</strong>';
 		
 		//retrieve and display the redirect count
 		$count = get_post_meta($post->ID,'qr_redirect_count',true);
@@ -391,7 +583,7 @@ function qr_image_custom_box() {
 			$count = 0;
 		}
 		
-		echo '<div class="qr-clearcount">This QR has redirected <strong><span id="qr_count_value">'.$count.'</span></strong> time(s).';
+		echo '<div class="qr-clearcount">This QR has redirected <strong><span id="qr_count_value">'.esc_html($count).'</span></strong> time(s).';
 		
 		//create a button to clear count
 		echo '<div class="button" id="clear_count_button">Clear Count</div></div>';
@@ -528,28 +720,37 @@ function qr_show_code($atts) {
 	}
 	$output = '';
 	$img = get_post_meta($id, 'qr_image_url', true);
-	$output .= '<img src="'.$img.'" class="qr-code" />';	
+	$output .= '<img src="'.esc_url($img).'" class="qr-code" />';	
 	return $output;
 }
 add_shortcode( 'qr-code', 'qr_show_code');
 
 /**
- * Add our custom post_meta fields to the column list and quick edit in the QR Code section of the WP Dashboard 
- * 
+ * Add our custom post meta fields to the column list
+ * in the QR Code section of the WP Dashboard.
+ *
  * @param array $column_array
+ * @return array
  */
 function qr_post_and_quick_edit_columns( $column_array ) {
- 
-	$column_array['qr_redirect_response'] = 'HTTP Response Code';
-	$column_array['qr_redirect_size'] = 'Size';
-	$column_array['qr_redirect_ecl'] = 'Error Correction Level';
-	$column_array['qr_redirect_count'] = 'Redirect Count';
-	$column_array['qr_redirect_shortcode'] = 'Short Code';
-	$column_array['qr_redirect_qr_code'] = 'Download QR Code';
- 
+
+	// QR Codes do not use Featured Images.
+	unset( $column_array['thumbnail'] );
+
+	$column_array['qr_redirect_response']  = 'HTTP Response Code';
+	$column_array['qr_redirect_size']      = 'Size';
+	$column_array['qr_redirect_ecl']       = 'Error Correction Level';
+	$column_array['qr_redirect_count']     = 'Redirect Count';
+	$column_array['qr_redirect_shortcode']  = 'Short Code';
+	$column_array['qr_redirect_qr_code']   = 'Download QR Code';
+
 	return $column_array;
 }
-add_filter('manage_qrcode_posts_columns', 'qr_post_and_quick_edit_columns');
+
+add_filter(
+	'manage_qrcode_posts_columns',
+	'qr_post_and_quick_edit_columns'
+);
  
 /**
  * Populate the new columns created by qr_post_and_quick_edit_columns() with data
@@ -564,7 +765,7 @@ function qr_populate_both_columns( $column_name, $id ) {
 		case 'qr_redirect_response': {
 			if(get_post_meta( $id, 'qr_redirect_response', true )) {
 				//put the post_ID in the id for a container div so we can grab it with javascript for bulk editing
-				echo '<div id="qr_redirect_response_'.$id.'">'.get_post_meta( $id, 'qr_redirect_response', true ).'</div>';
+			    echo '<div id="qr_redirect_response_'.$id.'">'.esc_html(get_post_meta( $id, 'qr_redirect_response', true )).'</div>';
 			}
 			else {
 				echo 'Not set';
@@ -573,7 +774,7 @@ function qr_populate_both_columns( $column_name, $id ) {
 		}
 		case 'qr_redirect_size': {
 			if(get_post_meta( $id, 'qr_redirect_size', true )) {
-				$qr_size = get_post_meta( $id, 'qr_redirect_size', true );
+			    $qr_size = esc_html(get_post_meta( $id, 'qr_redirect_size', true ));
 				
 				//because the sizing method changed when we switched libraries, we'll need to add some extra code for backwards compatibility
 				if($qr_size > 30) {
@@ -590,7 +791,7 @@ function qr_populate_both_columns( $column_name, $id ) {
 		}
 		case 'qr_redirect_ecl': {
 			if(get_post_meta( $id, 'qr_redirect_ecl', true )) {
-				echo get_post_meta( $id, 'qr_redirect_ecl', true );
+			    echo esc_html(get_post_meta( $id, 'qr_redirect_ecl', true ));
 			}
 			else {
 				echo 'Not set';
@@ -599,7 +800,7 @@ function qr_populate_both_columns( $column_name, $id ) {
 		}
 		case 'qr_redirect_count': {
 			if(get_post_meta( $id, 'qr_redirect_count', true )) {
-				echo get_post_meta( $id, 'qr_redirect_count', true );
+			    echo esc_html(get_post_meta( $id, 'qr_redirect_count', true ));
 			}
 			else {
 				echo '0';
@@ -612,7 +813,7 @@ function qr_populate_both_columns( $column_name, $id ) {
 		}
 		case 'qr_redirect_qr_code': {
 			$img = get_post_meta($id, 'qr_image_url', true);
-			echo '<div style="width: 100%; text-align: center;"><a href="'.$img.'" target="_blank" download><img src="'.$img.'" style="width: 50px; height: auto;" /><a/></div>';
+			echo '<div style="width: 100%; text-align: center;"><a href="' . esc_url( $img ) . '" target="_blank" download><img src="' . esc_url( $img ) . '" style="width: 50px; height: auto;" /></a></div>';
 			break;
 		}
 	endswitch;
@@ -665,40 +866,43 @@ function qr_quick_edit_save( $post_id ){
  
 	// update the response code
 	if ( isset( $_POST['qr_redirect_response'] ) ) {
- 		update_post_meta( $post_id, 'qr_redirect_response', $_POST['qr_redirect_response'] );
+	    update_post_meta( $post_id, 'qr_redirect_response', qr_sanitize_redirect_response(sanitize_text_field($_POST['qr_redirect_response'])) );
 	} 
 }
 add_action( 'save_post', 'qr_quick_edit_save' );
+
 
 /**
  * Bulk Edit save
  */
 function qr_save_bulk_edit_hook() {
-	// check user capabilities
-	if ( !current_user_can( 'edit_posts', $post_id ) ) {
-		exit;
-	}
+    
+    //if post IDs are empty, it is nothing to do here
+    if( empty( $_POST[ 'post_ids' ] ) ) {
+        exit;
+    }
+    
+    if ( !wp_verify_nonce( $_REQUEST['nonce'], 'qr_redirector_q_edit_nonce' ) ) {
+        exit;
+    }
+    
+    //for each post ID
+    foreach ( $_POST['post_ids'] as $id ) {
+	   // check user capabilities
+    	if ( !current_user_can( 'edit_posts', $id ) ) {
+    		exit;
+    	}
 	
-	if ( !wp_verify_nonce( $_REQUEST['nonce'], 'qr_redirector_q_edit_nonce' ) ) {
-		exit;
-	}
-	
-	//if post IDs are empty, it is nothing to do here
-	if( empty( $_POST[ 'post_ids' ] ) ) {
-		exit;
-	}
- 
-	//for each post ID
-	foreach( $_POST[ 'post_ids' ] as $id ) {
 		// if qr_redirect_response is empty, don't change it
 		if( !empty( $_POST[ 'qr_redirect_response' ] ) ) {
-			update_post_meta( $id, 'qr_redirect_response', $_POST['qr_redirect_response'] );
+		    update_post_meta( $id, 'qr_redirect_response', qr_sanitize_redirect_response(sanitize_text_field($_POST['qr_redirect_response']) ));
 		}
-	}
+    }
  
 	exit;
 }
 add_action( 'wp_ajax_qr_save_bulk', 'qr_save_bulk_edit_hook' ); // format of add_action( 'wp_ajax_{ACTION}', 'FUNCTION NAME' );
+
 
 /**
  * Adds the new custom post types to the WP Dashboard's "At a Glance" widget.
@@ -745,11 +949,6 @@ function qr_admin_custom_style() {
 	$icon = WP_PLUGIN_URL.'/'.str_replace(basename( __FILE__),"",plugin_basename(__FILE__)) . 'assets/qr-menu-icon-dark.png';
 	
 	echo '<style>
-		.post-type-qrcode .column-tag_staff_id,
-		.post-type-qrcode .column-tag_post_thumbs {
-			width: 4em;
-		}
-						
 		.post-type-qrcode tr.status-draft td {
 			opacity: 0.3; /* Real browsers */
 	    	filter: alpha(opacity = 30); /* MSIE */
