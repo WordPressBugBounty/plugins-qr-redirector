@@ -37,7 +37,7 @@ final class Encoder
     /**
      * Codec cache.
      *
-     * @var array
+     * @var array<string,ReedSolomonCodec>
      */
     private static $codecs = [];
 
@@ -155,7 +155,7 @@ final class Encoder
     /**
      * Chooses the best mode for a given content.
      */
-    private static function chooseMode(string $content, string $encoding = null) : Mode
+    private static function chooseMode(string $content, ?string $encoding = null) : Mode
     {
         if (null !== $encoding && 0 === strcasecmp($encoding, 'SHIFT-JIS')) {
             return self::isOnlyDoubleByteKanji($content) ? Mode::KANJI() : Mode::BYTE();

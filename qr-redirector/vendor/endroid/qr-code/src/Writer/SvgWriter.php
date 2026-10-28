@@ -72,7 +72,7 @@ final class SvgWriter implements WriterInterface
             }
         }
 
-        $result = new SvgResult($xml, boolval($options[self::WRITER_OPTION_EXCLUDE_XML_DECLARATION]));
+        $result = new SvgResult($matrix, $xml, boolval($options[self::WRITER_OPTION_EXCLUDE_XML_DECLARATION]));
 
         if ($logo instanceof LogoInterface) {
             $this->addLogo($logo, $result, $options);
@@ -81,7 +81,7 @@ final class SvgWriter implements WriterInterface
         return $result;
     }
 
-    /** @param array<mixed> $options */
+    /** @param array<string, mixed> $options */
     private function addLogo(LogoInterface $logo, SvgResult $result, array $options): void
     {
         $logoImageData = LogoImageData::createForLogo($logo);

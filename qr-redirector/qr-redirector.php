@@ -1,14 +1,14 @@
 <?php
 /**
  * @package QR Redirector
- * @version 2.0.6
+ * @version 2.1.0
  */
 /*
 Plugin Name: QR Redirector
 Plugin URI: http://nlb-creations.com/2012/10/19/wordpress-plugin-qr-redirector/
 Description: QR Redirector lets you create dynamic QR Codes by a generating a QR code for a URL on your site, and redirecting that URL anywhere you want.
 Author: Nikki Blight <nblight@nlb-creations.com>
-Version: 2.0.6
+Version: 2.1.0
 Author URI: http://www.nlb-creations.com
 */
 

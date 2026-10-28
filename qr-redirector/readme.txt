@@ -3,8 +3,9 @@ Contributors: kionae
 Donate Link: http://nlb-creations.com/donate/
 Tags: qr code, redirection
 Requires at least: 3.2.0
-Tested up to: 7.1.1
-Stable tag: 2.0.6
+Requires PHP: 7.1
+Tested up to: 7.1.4
+Stable tag: 2.1.0
 
 QR Redirector lets you create a QR code for a URL on your site, and redirect that URL anywhere.  The result is a reusable QR Code.
 
@@ -70,6 +71,10 @@ This sometimes happens when first installing the plugin, and occasionally if you
 4. QR Redirector edit screen
 
 == Changelog ==
+
+=2.1.0=
+* Updating the Endroid QR library and its dependencies to the latest versions.
+* Verifying PHP 8.4 compatibility.
 
 = 2.0.6 =
 * Javascript bug fix for bulk edit
